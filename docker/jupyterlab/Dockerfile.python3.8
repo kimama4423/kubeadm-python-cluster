@@ -1,0 +1,107 @@
+# Dockerfile.python3.8
+# JupyterLab 拡張イメージ for Python 3.8
+
+FROM kubeadm-python-cluster/base-python:3.8
+
+# メタデータ
+LABEL maintainer="kubeadm-python-cluster"
+LABEL application="JupyterLab"
+LABEL python.version="3.8"
+LABEL jupyterlab.version="4.0.11"
+LABEL image.type="jupyterlab-singleuser"
+LABEL build.date="2025-01-09"
+
+# 環境変数設定
+ENV JUPYTER_ENABLE_LAB=yes
+ENV JUPYTER_PORT=8888
+ENV JUPYTER_TOKEN=""
+ENV JUPYTER_BASE_URL="/"
+ENV GRANT_SUDO=yes
+ENV NB_UID=1000
+ENV NB_GID=1000
+ENV NB_USER=jovyan
+ENV NB_GROUP=jovyan
+ENV HOME=/home/jovyan
+ENV SHELL=/bin/bash
+
+# rootユーザーに戻る
+USER root
+
+# 作業ディレクトリ
+WORKDIR /tmp
+
+# システム依存関係の追加インストール
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # Jupyter拡張に必要なツール
+    nodejs \
+    npm \
+    # LaTeX (オプション)
+    texlive-xetex \
+    texlive-fonts-recommended \
+    texlive-generic-recommended \
+    # その他のツール
+    pandoc \
+    # Git設定用
+    git \
+    # ファイル操作
+    zip \
+    unzip \
+    # プロセス管理
+    tini \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# JupyterLab拡張パッケージインストール
+COPY requirements-jupyterlab-python38.txt /tmp/
+RUN pip install --no-cache-dir -r /tmp/requirements-jupyterlab-python38.txt \
+    && rm /tmp/requirements-jupyterlab-python38.txt
+
+# JupyterLab拡張機能インストール
+RUN jupyter labextension install --no-build \
+    @jupyter-widgets/jupyterlab-manager \
+    @jupyterlab/git \
+    @jupyterlab/toc \
+    @jupyterlab/plotly-extension \
+    && jupyter lab build --minimize=False \
+    && jupyter lab clean \
+    && npm cache clean --force \
+    && rm -rf $HOME/.cache/yarn \
+    && rm -rf $HOME/.node-gyp
+
+# Jupyter設定ディレクトリ
+RUN mkdir -p /etc/jupyter
+
+# Jupyter設定ファイル
+COPY jupyter_config/ /etc/jupyter/
+COPY jupyter_lab_config.py /etc/jupyter/jupyter_lab_config.py
+
+# jovyanユーザー作成（JupyterHub標準）
+RUN groupadd -r -g $NB_GID $NB_GROUP \
+    && useradd -r -u $NB_UID -g $NB_GROUP -s $SHELL -d $HOME $NB_USER \
+    && mkdir -p $HOME \
+    && chown -R $NB_USER:$NB_GROUP $HOME \
+    && chmod 755 $HOME
+
+# sudoアクセス設定
+RUN echo "$NB_USER ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/notebook
+
+# 起動スクリプト
+COPY start-notebook.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/start-notebook.sh
+
+# 作業ディレクトリ設定
+WORKDIR $HOME
+
+# ポート公開
+EXPOSE $JUPYTER_PORT
+
+# ヘルスチェック
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:$JUPYTER_PORT || exit 1
+
+# ユーザー切り替え
+USER $NB_USER
+
+# デフォルトコマンド
+ENTRYPOINT ["tini", "-g", "--"]
+CMD ["/usr/local/bin/start-notebook.sh"]

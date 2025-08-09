@@ -1,0 +1,105 @@
+# kubeadm-config.yaml
+# kubeadmクラスター初期化設定ファイル
+
+apiVersion: kubeadm.k8s.io/v1beta3
+kind: InitConfiguration
+localAPIEndpoint:
+  advertiseAddress: "0.0.0.0"  # Will be replaced by script with actual IP
+  bindPort: 6443
+nodeRegistration:
+  criSocket: unix:///var/run/containerd/containerd.sock
+  imagePullPolicy: IfNotPresent
+  name: ""  # Will be replaced by script with hostname
+  taints: null
+---
+apiVersion: kubeadm.k8s.io/v1beta3
+kind: ClusterConfiguration
+kubernetesVersion: "v1.28.2"
+clusterName: "kubeadm-python-cluster"
+controlPlaneEndpoint: ""  # Will be set by script if HA is enabled
+apiServer:
+  advertiseAddress: "0.0.0.0"  # Will be replaced by script
+  bindPort: 6443
+  certSANs: []  # Will be populated by script if needed
+  extraArgs:
+    authorization-mode: "Node,RBAC"
+    enable-admission-plugins: "NamespaceLifecycle,LimitRanger,ServiceAccount,DefaultStorageClass,DefaultTolerationSeconds,MutatingAdmissionWebhook,ValidatingAdmissionWebhook,ResourceQuota,NodeRestriction"
+    audit-log-maxage: "30"
+    audit-log-maxbackup: "3"
+    audit-log-maxsize: "100"
+    audit-log-path: "/var/log/kube-apiserver-audit.log"
+  extraVolumes:
+  - name: "audit-log"
+    hostPath: "/var/log/kube-apiserver-audit.log"
+    mountPath: "/var/log/kube-apiserver-audit.log"
+    readOnly: false
+    pathType: FileOrCreate
+controllerManager:
+  extraArgs:
+    bind-address: "0.0.0.0"
+    port: "10257"
+scheduler:
+  extraArgs:
+    bind-address: "0.0.0.0"
+    port: "10259"
+etcd:
+  local:
+    dataDir: "/var/lib/etcd"
+    extraArgs:
+      listen-metrics-urls: "http://0.0.0.0:2381"
+networking:
+  serviceSubnet: "10.96.0.0/12"
+  podSubnet: "10.244.0.0/16"  # For Flannel CNI
+  dnsDomain: "cluster.local"
+---
+apiVersion: kubeadm.k8s.io/v1beta3
+kind: KubeletConfiguration
+authentication:
+  anonymous:
+    enabled: false
+  webhook:
+    cacheTTL: "2m0s"
+    enabled: true
+  x509:
+    clientCAFile: "/etc/kubernetes/pki/ca.crt"
+authorization:
+  mode: "Webhook"
+  webhook:
+    cacheAuthorizedTTL: "5m0s"
+    cacheUnauthorizedTTL: "30s"
+cgroupDriver: "systemd"
+clusterDNS:
+  - "10.96.0.10"
+clusterDomain: "cluster.local"
+cpuManagerReconcilePeriod: "10s"
+evictionPressureTransitionPeriod: "5m0s"
+fileCheckFrequency: "20s"
+healthzBindAddress: "127.0.0.1"
+healthzPort: 10248
+httpCheckFrequency: "20s"
+imageMinimumGCAge: "2m0s"
+logging:
+  flushFrequency: "5s"
+  options:
+    json:
+      infoBufferSize: "0"
+  verbosity: 0
+memorySwap: {}
+nodeStatusReportFrequency: "10s"
+nodeStatusUpdateFrequency: "10s"
+rotateCertificates: true
+runtimeRequestTimeout: "2m0s"
+shutdownGracePeriod: "0s"
+shutdownGracePeriodCriticalPods: "0s"
+staticPodPath: "/etc/kubernetes/manifests"
+streamingConnectionIdleTimeout: "4h0m0s"
+syncFrequency: "1m0s"
+volumeStatsAggPeriod: "1m0s"
+---
+apiVersion: kubeproxy.config.k8s.io/v1alpha1
+kind: KubeProxyConfiguration
+bindAddress: "0.0.0.0"
+healthzBindAddress: "0.0.0.0:10256"
+metricsBindAddress: "0.0.0.0:10249"
+mode: "iptables"
+clusterCIDR: "10.244.0.0/16"

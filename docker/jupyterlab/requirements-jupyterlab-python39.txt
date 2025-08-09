@@ -1,0 +1,78 @@
+# JupyterLab Requirements for Python 3.9
+# Additional packages beyond base-python requirements
+
+# JupyterLab core (latest compatible)
+jupyterlab==4.0.11
+notebook==7.0.8
+nbconvert==7.16.1
+nbformat==5.9.2
+
+# JupyterLab extensions and tools
+jupyterlab-git==0.50.1
+jupyterlab-widgets==3.0.10
+jupyterlab-plotly==5.17.0
+jupyterlab-system-monitor==0.8.0
+
+# Code formatting and linting in notebook
+jupyterlab-code-formatter==2.2.1
+isort==5.13.2
+
+# Enhanced notebook features
+ipywidgets==8.1.1
+widgetsnbextension==4.0.9
+jupyter-bokeh==3.0.7
+bqplot==0.12.42
+
+# Version control integration
+nbdime==4.0.1
+
+# Collaboration features
+jupyter-collaboration==2.0.1
+
+# Performance and debugging
+memory-profiler==0.61.0
+line-profiler==4.1.1
+jupyter-resource-usage==1.0.2
+
+# Data visualization enhancements
+plotly==5.17.0
+bokeh==3.3.2
+altair==5.2.0
+ipyleaflet==0.18.1
+
+# Machine learning visualization
+yellowbrick==1.5
+
+# File format support
+openpyxl==3.1.2
+xlrd==2.0.1
+h5py==3.10.0
+
+# Database connectivity for notebooks
+sqlalchemy==2.0.23
+ipython-sql==0.5.0
+
+# Text processing and NLP
+nltk==3.8.1
+textblob==0.17.1
+spacy==3.7.2
+
+# Web scraping
+beautifulsoup4==4.12.2
+requests-html==0.10.0
+scrapy==2.11.0
+
+# Additional utilities
+tqdm==4.66.1
+python-dotenv==1.0.0
+joblib==1.3.2
+
+# Theme and UI enhancements
+jupyterlab-theme-solarized-dark==3.0.1
+
+# Geospatial support
+geopandas==0.14.1
+folium==0.15.0
+
+# Time series analysis
+prophet==1.1.5

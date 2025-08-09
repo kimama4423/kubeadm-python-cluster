@@ -1,0 +1,77 @@
+---
+# JupyterHub Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: jupyterhub
+  namespace: jupyterhub
+  labels:
+    app.kubernetes.io/name: jupyterhub
+    app.kubernetes.io/instance: kubeadm-python-cluster
+    app.kubernetes.io/component: hub
+spec:
+  type: NodePort
+  ports:
+  - name: http
+    port: 80
+    targetPort: http
+    protocol: TCP
+    nodePort: 30080
+  - name: hub
+    port: 8081
+    targetPort: hub
+    protocol: TCP
+    nodePort: 30081
+  selector:
+    app.kubernetes.io/name: jupyterhub
+    app.kubernetes.io/component: hub
+
+---
+# JupyterHub Headless Service (for internal communication)
+apiVersion: v1
+kind: Service
+metadata:
+  name: jupyterhub-internal
+  namespace: jupyterhub
+  labels:
+    app.kubernetes.io/name: jupyterhub
+    app.kubernetes.io/instance: kubeadm-python-cluster
+    app.kubernetes.io/component: hub-internal
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+  - name: http
+    port: 8000
+    targetPort: http
+    protocol: TCP
+  - name: hub
+    port: 8081
+    targetPort: hub
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: jupyterhub
+    app.kubernetes.io/component: hub
+
+---
+# LoadBalancer Service (optional, for external access)
+# Uncomment if you have a LoadBalancer provider (cloud environment)
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: jupyterhub-lb
+#   namespace: jupyterhub
+#   labels:
+#     app.kubernetes.io/name: jupyterhub
+#     app.kubernetes.io/instance: kubeadm-python-cluster
+#     app.kubernetes.io/component: hub-lb
+# spec:
+#   type: LoadBalancer
+#   ports:
+#   - name: http
+#     port: 80
+#     targetPort: http
+#     protocol: TCP
+#   selector:
+#     app.kubernetes.io/name: jupyterhub
+#     app.kubernetes.io/component: hub

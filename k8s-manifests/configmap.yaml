@@ -1,0 +1,203 @@
+---
+# JupyterHub Configuration ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jupyterhub-config
+  namespace: jupyterhub
+  labels:
+    app.kubernetes.io/name: jupyterhub
+    app.kubernetes.io/instance: kubeadm-python-cluster
+    app.kubernetes.io/component: config
+data:
+  jupyterhub_config.py: |
+    # JupyterHub Configuration for Kubernetes Deployment
+    import os
+    from kubespawner import KubeSpawner
+    
+    # ================================================
+    # Basic JupyterHub Configuration
+    # ================================================
+    
+    c.JupyterHub.hub_ip = '0.0.0.0'
+    c.JupyterHub.hub_port = 8081
+    c.JupyterHub.port = 8000
+    
+    # Database configuration
+    c.JupyterHub.db_url = 'sqlite:///jupyterhub.sqlite'
+    
+    # Admin users
+    c.Authenticator.admin_users = {'admin'}
+    
+    # ================================================
+    # Kubernetes Integration
+    # ================================================
+    
+    c.JupyterHub.spawner_class = KubeSpawner
+    c.KubeSpawner.namespace = 'jupyterhub'
+    c.KubeSpawner.service_account = 'jupyterhub-singleuser'
+    
+    # Container images (updated for local registry)
+    c.KubeSpawner.image_spec = 'localhost:5000/kubeadm-python-cluster/jupyterlab:3.11'
+    
+    # Resource limits
+    c.KubeSpawner.cpu_limit = 1.0
+    c.KubeSpawner.mem_limit = '2G'
+    c.KubeSpawner.cpu_guarantee = 0.5
+    c.KubeSpawner.mem_guarantee = '1G'
+    
+    # Storage configuration
+    c.KubeSpawner.pvc_name_template = 'jupyterhub-user-{username}'
+    c.KubeSpawner.storage_capacity = '5Gi'
+    c.KubeSpawner.storage_class = 'jupyterhub-user-storage'
+    
+    # Volume mounts
+    c.KubeSpawner.volume_mounts = [
+        {
+            'name': 'home',
+            'mountPath': '/home/jovyan',
+            'subPath': 'home/{username}'
+        },
+        {
+            'name': 'shared',
+            'mountPath': '/home/jovyan/shared',
+            'readOnly': False
+        }
+    ]
+    
+    c.KubeSpawner.volumes = [
+        {
+            'name': 'home',
+            'persistentVolumeClaim': {
+                'claimName': c.KubeSpawner.pvc_name_template
+            }
+        },
+        {
+            'name': 'shared',
+            'persistentVolumeClaim': {
+                'claimName': 'jupyterhub-shared-data-pvc'
+            }
+        }
+    ]
+    
+    # Environment variables
+    c.KubeSpawner.environment = {
+        'JUPYTER_ENABLE_LAB': '1',
+        'GRANT_SUDO': 'yes',
+        'NB_UID': '1000',
+        'NB_GID': '1000',
+        'CHOWN_HOME': 'yes',
+    }
+    
+    # Security context
+    c.KubeSpawner.security_context = {
+        'runAsUser': 1000,
+        'runAsGroup': 1000,
+        'fsGroup': 1000,
+    }
+    
+    # Profile list for different Python versions
+    c.KubeSpawner.profile_list = [
+        {
+            'display_name': 'Python 3.11 (Default)',
+            'description': 'Latest Python with modern libraries',
+            'default': True,
+            'kubespawner_override': {
+                'image_spec': 'localhost:5000/kubeadm-python-cluster/jupyterlab:3.11',
+                'cpu_limit': 1.0,
+                'mem_limit': '2G',
+            }
+        },
+        {
+            'display_name': 'Python 3.10',
+            'description': 'Python 3.10 with stable libraries',
+            'kubespawner_override': {
+                'image_spec': 'localhost:5000/kubeadm-python-cluster/jupyterlab:3.10',
+                'cpu_limit': 1.0,
+                'mem_limit': '2G',
+            }
+        },
+        {
+            'display_name': 'Python 3.9',
+            'description': 'Python 3.9 with compatible libraries',
+            'kubespawner_override': {
+                'image_spec': 'localhost:5000/kubeadm-python-cluster/jupyterlab:3.9',
+                'cpu_limit': 1.0,
+                'mem_limit': '2G',
+            }
+        },
+        {
+            'display_name': 'Python 3.8 (Legacy)',
+            'description': 'Python 3.8 for legacy compatibility',
+            'kubespawner_override': {
+                'image_spec': 'localhost:5000/kubeadm-python-cluster/jupyterlab:3.8',
+                'cpu_limit': 0.8,
+                'mem_limit': '1.5G',
+            }
+        },
+    ]
+    
+    # ================================================
+    # Authentication
+    # ================================================
+    
+    c.JupyterHub.authenticator_class = 'nativeauthenticator.NativeAuthenticator'
+    c.NativeAuthenticator.create_users = True
+    c.NativeAuthenticator.enable_signup = True
+    
+    # ================================================
+    # Services
+    # ================================================
+    
+    c.JupyterHub.services = [
+        {
+            'name': 'idle-culler',
+            'command': [
+                'python3', '-m', 'jupyterhub_idle_culler',
+                '--timeout=3600',
+                '--max-age=7200',
+                '--remove-named-servers',
+                '--cull-users',
+            ],
+            'admin': True,
+        }
+    ]
+    
+    # ================================================
+    # Logging and Debug
+    # ================================================
+    
+    c.JupyterHub.log_level = 'INFO'
+    c.Application.log_level = 'INFO'
+
+---
+# Environment Variables ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jupyterhub-env
+  namespace: jupyterhub
+  labels:
+    app.kubernetes.io/name: jupyterhub
+    app.kubernetes.io/instance: kubeadm-python-cluster
+    app.kubernetes.io/component: config
+data:
+  # JupyterHub settings
+  JUPYTERHUB_NAMESPACE: "jupyterhub"
+  JUPYTERHUB_SERVICE_ACCOUNT: "jupyterhub"
+  JUPYTERHUB_LOG_LEVEL: "INFO"
+  JUPYTERHUB_DB_URL: "sqlite:///jupyterhub.sqlite"
+  
+  # Container registry settings
+  CONTAINER_REGISTRY: "localhost:5000"
+  
+  # Resource defaults
+  DEFAULT_CPU_LIMIT: "1.0"
+  DEFAULT_MEM_LIMIT: "2G"
+  DEFAULT_CPU_GUARANTEE: "0.5"  
+  DEFAULT_MEM_GUARANTEE: "1G"
+  
+  # Storage settings
+  STORAGE_CLASS: "jupyterhub-user-storage"
+  STORAGE_CAPACITY: "5Gi"
+  SHARED_STORAGE_CAPACITY: "50Gi"

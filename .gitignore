@@ -1,0 +1,65 @@
+# OS and Editor files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Log files
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+
+# Kubernetes secrets and credentials
+*.key
+*.crt
+*.pem
+kubeconfig*
+.kubeconfig
+
+# Environment variables
+.env
+.env.local
+.env.production
+
+# Docker build cache
+.docker/
+
+# Backup files
+*.backup
+*.bak
+backups/
+
+# Test coverage
+coverage/
+.coverage
+.nyc_output
+
+# IDE files
+.vscode/
+.idea/
+*.iml
+
+# Helm charts
+charts/*.tgz
+
+# Container registry credentials
+registry-auth.json
+
+# Local development files
+local/
+development/
+
+# Test results
+tests/*-results.log
+tests/*-report.html
+tests/vulnerability-scan-results.json
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class

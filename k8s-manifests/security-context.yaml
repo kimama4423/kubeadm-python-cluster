@@ -1,0 +1,456 @@
+---
+# Pod Security Policy (deprecated but included for reference)
+# Note: PodSecurityPolicy is deprecated in Kubernetes 1.21+ and removed in 1.25+
+# Use Pod Security Standards instead
+# apiVersion: policy/v1beta1
+# kind: PodSecurityPolicy
+# metadata:
+#   name: jupyterhub-psp
+#   labels:
+#     app.kubernetes.io/name: jupyterhub
+#     app.kubernetes.io/instance: kubeadm-python-cluster
+#     app.kubernetes.io/component: security
+# spec:
+#   privileged: false
+#   allowPrivilegeEscalation: false
+#   requiredDropCapabilities:
+#     - ALL
+#   volumes:
+#     - 'configMap'
+#     - 'emptyDir'
+#     - 'projected'
+#     - 'secret'
+#     - 'downwardAPI'
+#     - 'persistentVolumeClaim'
+#   runAsUser:
+#     rule: 'MustRunAsNonRoot'
+#   seLinux:
+#     rule: 'RunAsAny'
+#   fsGroup:
+#     rule: 'MustRunAs'
+#     ranges:
+#       - min: 1000
+#         max: 65535
+
+---
+# Security Context Constraints for JupyterHub Hub
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jupyterhub-security-context
+  namespace: jupyterhub
+  labels:
+    app.kubernetes.io/name: jupyterhub
+    app.kubernetes.io/instance: kubeadm-python-cluster
+    app.kubernetes.io/component: security
+data:
+  security-guidelines.md: |
+    # JupyterHub Security Guidelines
+    
+    ## Pod Security Context
+    
+    ### JupyterHub Hub Security Context
+    - runAsUser: 1000 (jupyterhub user)
+    - runAsGroup: 1000 (jupyterhub group)
+    - fsGroup: 1000 (for volume permissions)
+    - runAsNonRoot: true
+    - allowPrivilegeEscalation: false
+    
+    ### Single-User Server Security Context
+    - runAsUser: 1000 (jovyan user)
+    - runAsGroup: 1000 (jovyan group)
+    - fsGroup: 1000 (for volume permissions)
+    - runAsNonRoot: true
+    - allowPrivilegeEscalation: false
+    
+    ## Container Security
+    
+    ### Capabilities
+    - Drop ALL capabilities by default
+    - Only add specific capabilities when absolutely necessary
+    
+    ### Read-only Root Filesystem
+    - Enable where possible
+    - Use emptyDir volumes for writable directories
+    
+    ### Resource Limits
+    - Always set CPU and memory limits
+    - Set appropriate requests for scheduling
+    
+    ## Network Security
+    
+    ### Network Policies
+    - Default deny-all ingress policy
+    - Explicit allow rules for necessary communication
+    - Restrict egress to required services only
+    
+    ### Service Mesh (optional)
+    - Consider Istio for advanced traffic management
+    - Mutual TLS for pod-to-pod communication
+    
+    ## Storage Security
+    
+    ### Persistent Volumes
+    - Use appropriate storage classes
+    - Set proper file permissions (fsGroup)
+    - Consider encryption at rest
+    
+    ### Secrets Management
+    - Use Kubernetes Secrets for sensitive data
+    - Consider external secret management (e.g., HashiCorp Vault)
+    - Rotate secrets regularly
+    
+    ## Monitoring and Auditing
+    
+    ### Audit Logging
+    - Enable Kubernetes audit logging
+    - Monitor security-relevant events
+    
+    ### Security Scanning
+    - Regular container image scanning
+    - Vulnerability assessment of running containers
+    
+    ## Compliance
+    
+    ### Standards
+    - Follow CIS Kubernetes Benchmark
+    - Implement Pod Security Standards
+    - Consider SOC2, PCI DSS requirements as applicable
+
+---
+# Enhanced Security Context for JupyterHub Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jupyterhub-secure
+  namespace: jupyterhub
+  labels:
+    app.kubernetes.io/name: jupyterhub
+    app.kubernetes.io/instance: kubeadm-python-cluster
+    app.kubernetes.io/component: hub-secure
+    app.kubernetes.io/version: "4.0.2"
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: jupyterhub
+      app.kubernetes.io/component: hub-secure
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: jupyterhub
+        app.kubernetes.io/instance: kubeadm-python-cluster
+        app.kubernetes.io/component: hub-secure
+      annotations:
+        # Security annotations
+        container.apparmor.security.beta.kubernetes.io/jupyterhub: runtime/default
+        seccomp.security.alpha.kubernetes.io/pod: runtime/default
+    spec:
+      serviceAccountName: jupyterhub
+      # Enhanced Pod Security Context
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: "OnRootMismatch"
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: jupyterhub
+        image: localhost:5000/kubeadm-python-cluster/jupyterhub:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: https
+          containerPort: 8443
+          protocol: TCP
+        - name: hub
+          containerPort: 8081
+          protocol: TCP
+        # Enhanced Container Security Context
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
+          runAsGroup: 1000
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
+        env:
+        - name: JUPYTERHUB_SSL_CERT
+          value: "/etc/jupyterhub/ssl/tls.crt"
+        - name: JUPYTERHUB_SSL_KEY
+          value: "/etc/jupyterhub/ssl/tls.key"
+        - name: JUPYTERHUB_NAMESPACE
+          value: "jupyterhub"
+        - name: JUPYTERHUB_SERVICE_ACCOUNT
+          value: "jupyterhub-singleuser"
+        - name: JUPYTERHUB_LOG_LEVEL
+          value: "INFO"
+        - name: JUPYTERHUB_DB_URL
+          value: "sqlite:///srv/jupyterhub/jupyterhub.sqlite"
+        - name: CONTAINER_REGISTRY
+          value: "localhost:5000"
+        - name: JUPYTERHUB_COOKIE_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: jupyterhub-secret
+              key: cookie-secret
+        - name: JUPYTERHUB_CRYPTO_KEY
+          valueFrom:
+            secretKeyRef:
+              name: jupyterhub-secret
+              key: crypto-key
+        - name: KUBERNETES_SERVICE_HOST
+          value: kubernetes.default.svc.cluster.local
+        - name: KUBERNETES_SERVICE_PORT
+          value: "443"
+        volumeMounts:
+        - name: config
+          mountPath: /etc/jupyterhub/jupyterhub_config.py
+          subPath: jupyterhub_config.py
+          readOnly: true
+        - name: hub-data
+          mountPath: /srv/jupyterhub
+        - name: shared-data
+          mountPath: /srv/jupyterhub/shared
+        - name: ssl-certs
+          mountPath: /etc/jupyterhub/ssl
+          readOnly: true
+        # Writable temporary directories
+        - name: tmp
+          mountPath: /tmp
+        - name: var-tmp
+          mountPath: /var/tmp
+        - name: home
+          mountPath: /home/jupyterhub
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "0.5"
+          limits:
+            memory: "1Gi"
+            cpu: "1"
+        livenessProbe:
+          httpGet:
+            path: /hub/health
+            port: https
+            scheme: HTTPS
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /hub/health
+            port: https
+            scheme: HTTPS
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+      volumes:
+      - name: config
+        configMap:
+          name: jupyterhub-config
+          defaultMode: 0644
+      - name: hub-data
+        persistentVolumeClaim:
+          claimName: jupyterhub-hub-pvc
+      - name: shared-data
+        persistentVolumeClaim:
+          claimName: jupyterhub-shared-data-pvc
+      - name: ssl-certs
+        secret:
+          secretName: jupyterhub-tls
+          defaultMode: 0600
+      # Temporary writable volumes for read-only root filesystem
+      - name: tmp
+        emptyDir: {}
+      - name: var-tmp
+        emptyDir: {}
+      - name: home
+        emptyDir: {}
+      imagePullSecrets:
+      - name: registry-credentials
+      nodeSelector:
+        kubernetes.io/os: linux
+      tolerations: []
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 1
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                  - jupyterhub
+              topologyKey: kubernetes.io/hostname
+
+---
+# Security-Enhanced Single-User Server Profile
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: singleuser-security-profile
+  namespace: jupyterhub
+  labels:
+    app.kubernetes.io/name: jupyterhub
+    app.kubernetes.io/instance: kubeadm-python-cluster
+    app.kubernetes.io/component: security
+data:
+  singleuser-security-config.py: |
+    # Single-User Server Security Configuration
+    
+    # Enhanced security context for spawned pods
+    c.KubeSpawner.security_context = {
+        'runAsUser': 1000,
+        'runAsGroup': 1000,
+        'fsGroup': 1000,
+        'runAsNonRoot': True,
+        'fsGroupChangePolicy': 'OnRootMismatch'
+    }
+    
+    # Container security context
+    c.KubeSpawner.container_security_context = {
+        'allowPrivilegeEscalation': False,
+        'readOnlyRootFilesystem': True,
+        'runAsNonRoot': True,
+        'runAsUser': 1000,
+        'runAsGroup': 1000,
+        'capabilities': {
+            'drop': ['ALL']
+        },
+        'seccompProfile': {
+            'type': 'RuntimeDefault'
+        }
+    }
+    
+    # Pod security annotations
+    c.KubeSpawner.pod_annotations = {
+        'container.apparmor.security.beta.kubernetes.io/notebook': 'runtime/default',
+        'seccomp.security.alpha.kubernetes.io/pod': 'runtime/default'
+    }
+    
+    # Additional volume mounts for writable directories
+    c.KubeSpawner.volume_mounts.extend([
+        {
+            'name': 'tmp',
+            'mountPath': '/tmp'
+        },
+        {
+            'name': 'var-tmp',
+            'mountPath': '/var/tmp'
+        }
+    ])
+    
+    c.KubeSpawner.volumes.extend([
+        {
+            'name': 'tmp',
+            'emptyDir': {}
+        },
+        {
+            'name': 'var-tmp',
+            'emptyDir': {}
+        }
+    ])
+    
+    # Resource limits for security
+    c.KubeSpawner.cpu_limit = 1.0
+    c.KubeSpawner.mem_limit = '2G'
+    c.KubeSpawner.cpu_guarantee = 0.1
+    c.KubeSpawner.mem_guarantee = '256M'
+    
+    # Disable privileged operations
+    c.KubeSpawner.privileged = False
+    c.KubeSpawner.allow_privilege_escalation = False
+
+---
+# Security Monitoring ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: security-monitoring
+  namespace: jupyterhub
+  labels:
+    app.kubernetes.io/name: jupyterhub
+    app.kubernetes.io/instance: kubeadm-python-cluster
+    app.kubernetes.io/component: security
+data:
+  falco-rules.yaml: |
+    # Custom Falco rules for JupyterHub security monitoring
+    - rule: Unauthorized Process in JupyterHub Container
+      desc: Detect unexpected process execution in JupyterHub containers
+      condition: >
+        spawned_process and container and
+        container.image.repository contains "jupyterhub" and
+        not proc.name in (python, python3, jupyterhub, node, npm, bash, sh, curl, wget)
+      output: >
+        Unauthorized process in JupyterHub container
+        (user=%user.name command=%proc.cmdline container=%container.name image=%container.image.repository)
+      priority: WARNING
+    
+    - rule: JupyterHub File Access Outside Allowed Paths
+      desc: Detect file access outside allowed paths in JupyterHub
+      condition: >
+        open_read and container and
+        container.image.repository contains "jupyterhub" and
+        not fd.name startswith /srv/jupyterhub and
+        not fd.name startswith /etc/jupyterhub and
+        not fd.name startswith /tmp and
+        not fd.name startswith /var/tmp and
+        not fd.name startswith /home/jovyan
+      output: >
+        Unauthorized file access in JupyterHub
+        (user=%user.name file=%fd.name container=%container.name)
+      priority: WARNING
+    
+    - rule: Network Connection to Suspicious Port
+      desc: Detect network connections to suspicious ports from JupyterHub containers
+      condition: >
+        outbound and container and
+        container.image.repository contains "jupyterhub" and
+        fd.rport not in (53, 80, 443, 5000, 6443, 8081, 8000, 8443, 8888) and
+        not fd.rip in (127.0.0.1)
+      output: >
+        Suspicious network connection from JupyterHub
+        (user=%user.name connection=%fd.name container=%container.name)
+      priority: WARNING
+
+  security-checklist.md: |
+    # JupyterHub Security Checklist
+    
+    ## Pre-deployment Security
+    - [ ] Container images scanned for vulnerabilities
+    - [ ] Secrets properly managed and rotated
+    - [ ] Network policies defined and tested
+    - [ ] Resource limits configured
+    - [ ] Security contexts properly set
+    
+    ## Runtime Security
+    - [ ] Pod Security Standards enforced
+    - [ ] Network policies active and monitored
+    - [ ] Resource usage within limits
+    - [ ] No privileged containers running
+    - [ ] Audit logging enabled and monitored
+    
+    ## Operational Security
+    - [ ] Regular security updates applied
+    - [ ] Backup and disaster recovery tested
+    - [ ] Access controls regularly reviewed
+    - [ ] Security monitoring alerts configured
+    - [ ] Incident response procedures documented
+    
+    ## Compliance
+    - [ ] Security policies documented
+    - [ ] Regular security assessments conducted
+    - [ ] Compliance requirements met
+    - [ ] Security training for administrators
+    - [ ] Change management process followed

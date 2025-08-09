@@ -1,0 +1,97 @@
+# Dockerfile.python3.8
+# Python 3.8 ベースイメージ for JupyterHub Cluster
+
+FROM python:3.8.18-slim-bullseye
+
+# メタデータ
+LABEL maintainer="kubeadm-python-cluster"
+LABEL python.version="3.8.18"
+LABEL image.type="base-python"
+LABEL build.date="2025-01-09"
+
+# 環境変数設定
+ENV PYTHON_VERSION=3.8.18
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONPATH=/usr/local/lib/python3.8/site-packages:/opt/conda/lib/python3.8/site-packages
+ENV PATH=/usr/local/bin:/opt/conda/bin:$PATH
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
+
+# 作業ディレクトリ
+WORKDIR /app
+
+# システムパッケージ更新とツールインストール
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # 基本ツール
+    curl \
+    wget \
+    gnupg \
+    ca-certificates \
+    apt-transport-https \
+    software-properties-common \
+    # 開発ツール
+    build-essential \
+    gcc \
+    g++ \
+    make \
+    cmake \
+    # Python開発関連
+    python3-dev \
+    python3-pip \
+    python3-venv \
+    # 数値計算ライブラリ依存関係
+    libblas3 \
+    liblapack3 \
+    libatlas-base-dev \
+    gfortran \
+    # データベース接続
+    libpq-dev \
+    libmariadb-dev \
+    libsqlite3-dev \
+    # 画像処理
+    libjpeg-dev \
+    libpng-dev \
+    libfreetype6-dev \
+    # その他の依存関係
+    libffi-dev \
+    libssl-dev \
+    libxml2-dev \
+    libxslt1-dev \
+    zlib1g-dev \
+    # システムユーティリティ
+    git \
+    vim \
+    nano \
+    htop \
+    tree \
+    unzip \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Python環境の最適化
+RUN python -m pip install --upgrade pip setuptools wheel
+
+# 基本的なPythonライブラリのインストール
+COPY requirements-base-python38.txt /tmp/
+RUN pip install --no-cache-dir -r /tmp/requirements-base-python38.txt \
+    && rm /tmp/requirements-base-python38.txt
+
+# 非rootユーザー作成
+RUN groupadd -r pythonuser && useradd -r -g pythonuser -s /bin/bash pythonuser \
+    && mkdir -p /home/pythonuser \
+    && chown -R pythonuser:pythonuser /home/pythonuser \
+    && chown -R pythonuser:pythonuser /app
+
+# Python環境情報出力スクリプト
+COPY python-info.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/python-info.sh
+
+# ヘルスチェック
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python -c "import sys; print(f'Python {sys.version}'); exit(0)"
+
+# ユーザー切り替え
+USER pythonuser
+
+# デフォルトコマンド
+CMD ["/usr/local/bin/python-info.sh"]

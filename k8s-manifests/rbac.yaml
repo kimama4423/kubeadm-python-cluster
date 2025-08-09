@@ -1,0 +1,171 @@
+---
+# ServiceAccount for JupyterHub
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: jupyterhub
+  namespace: jupyterhub
+  labels:
+    app.kubernetes.io/name: jupyterhub
+    app.kubernetes.io/instance: kubeadm-python-cluster
+    app.kubernetes.io/component: hub
+
+---
+# ClusterRole for JupyterHub (Pod and PVC management)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: jupyterhub-cluster-role
+  labels:
+    app.kubernetes.io/name: jupyterhub
+    app.kubernetes.io/instance: kubeadm-python-cluster
+    app.kubernetes.io/component: rbac
+rules:
+# Pod management
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "create", "delete", "patch", "watch"]
+- apiGroups: [""]
+  resources: ["pods/log"]
+  verbs: ["get", "list"]
+- apiGroups: [""]
+  resources: ["pods/exec"]
+  verbs: ["create"]
+
+# PersistentVolumeClaim management
+- apiGroups: [""]
+  resources: ["persistentvolumeclaims"]
+  verbs: ["get", "list", "create", "delete", "patch", "watch"]
+
+# Event management
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["get", "list", "watch"]
+
+# Node information (for scheduling)
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get", "list"]
+
+# Service management
+- apiGroups: [""]
+  resources: ["services"]
+  verbs: ["get", "list", "create", "delete", "patch"]
+
+---
+# Role for namespace-specific operations
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: jupyterhub
+  name: jupyterhub-role
+  labels:
+    app.kubernetes.io/name: jupyterhub
+    app.kubernetes.io/instance: kubeadm-python-cluster
+    app.kubernetes.io/component: rbac
+rules:
+# ConfigMap and Secret management
+- apiGroups: [""]
+  resources: ["configmaps", "secrets"]
+  verbs: ["get", "list", "create", "update", "patch", "delete"]
+
+# Endpoint management
+- apiGroups: [""]
+  resources: ["endpoints"]
+  verbs: ["get", "list"]
+
+---
+# ClusterRoleBinding for JupyterHub
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: jupyterhub-cluster-binding
+  labels:
+    app.kubernetes.io/name: jupyterhub
+    app.kubernetes.io/instance: kubeadm-python-cluster
+    app.kubernetes.io/component: rbac
+subjects:
+- kind: ServiceAccount
+  name: jupyterhub
+  namespace: jupyterhub
+roleRef:
+  kind: ClusterRole
+  name: jupyterhub-cluster-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# RoleBinding for namespace operations
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: jupyterhub-binding
+  namespace: jupyterhub
+  labels:
+    app.kubernetes.io/name: jupyterhub
+    app.kubernetes.io/instance: kubeadm-python-cluster
+    app.kubernetes.io/component: rbac
+subjects:
+- kind: ServiceAccount
+  name: jupyterhub
+  namespace: jupyterhub
+roleRef:
+  kind: Role
+  name: jupyterhub-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# ServiceAccount for Single-User Servers
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: jupyterhub-singleuser
+  namespace: jupyterhub
+  labels:
+    app.kubernetes.io/name: jupyterhub
+    app.kubernetes.io/instance: kubeadm-python-cluster
+    app.kubernetes.io/component: singleuser
+
+---
+# Role for Single-User Servers (minimal permissions)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: jupyterhub
+  name: jupyterhub-singleuser-role
+  labels:
+    app.kubernetes.io/name: jupyterhub
+    app.kubernetes.io/instance: kubeadm-python-cluster
+    app.kubernetes.io/component: rbac
+rules:
+# Allow reading own pod information
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list"]
+- apiGroups: [""]
+  resources: ["pods/log"]
+  verbs: ["get", "list"]
+
+# Allow reading ConfigMaps (for configuration)
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list"]
+
+---
+# RoleBinding for Single-User Servers
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: jupyterhub-singleuser-binding
+  namespace: jupyterhub
+  labels:
+    app.kubernetes.io/name: jupyterhub
+    app.kubernetes.io/instance: kubeadm-python-cluster
+    app.kubernetes.io/component: rbac
+subjects:
+- kind: ServiceAccount
+  name: jupyterhub-singleuser
+  namespace: jupyterhub
+roleRef:
+  kind: Role
+  name: jupyterhub-singleuser-role
+  apiGroup: rbac.authorization.k8s.io

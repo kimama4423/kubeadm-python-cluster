@@ -1,0 +1,33 @@
+{% extends "templates/page.html" %}
+
+{% block title %}
+{{super()}} - kubeadm-python-cluster
+{% endblock %}
+
+{% block nav_bar %}
+{{super()}}
+<div class="navbar-text">
+  <span class="navbar-brand">kubeadm-python-cluster</span>
+</div>
+{% endblock %}
+
+{% block announcement %}
+{% if announcement %}
+<div class="alert alert-info announcement">
+  <strong>Announcement:</strong> {{ announcement|safe }}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block footer %}
+<div class="text-center">
+  <p>
+    <small>
+      Powered by <a href="https://jupyter.org/hub">JupyterHub</a> on 
+      <a href="https://kubernetes.io/">Kubernetes</a>
+      <br>
+      {{ org_name }} - Multi-Python Development Environment
+    </small>
+  </p>
+</div>
+{% endblock %}

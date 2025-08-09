@@ -1,0 +1,317 @@
+---
+# Default Deny All Ingress Policy for JupyterHub namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: jupyterhub
+  labels:
+    app.kubernetes.io/name: jupyterhub
+    app.kubernetes.io/instance: kubeadm-python-cluster
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+
+---
+# Allow JupyterHub Hub ingress traffic
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-jupyterhub-ingress
+  namespace: jupyterhub
+  labels:
+    app.kubernetes.io/name: jupyterhub
+    app.kubernetes.io/instance: kubeadm-python-cluster
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: hub
+  policyTypes:
+  - Ingress
+  ingress:
+  # Allow external access to JupyterHub
+  - from: []
+    ports:
+    - protocol: TCP
+      port: 8000
+    - protocol: TCP
+      port: 8443
+  # Allow internal hub communication
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: jupyterhub
+    ports:
+    - protocol: TCP
+      port: 8081
+
+---
+# Allow Single-User Server ingress traffic
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-singleuser-ingress
+  namespace: jupyterhub
+  labels:
+    app.kubernetes.io/name: jupyterhub
+    app.kubernetes.io/instance: kubeadm-python-cluster
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      component: singleuser-server
+  policyTypes:
+  - Ingress
+  ingress:
+  # Allow JupyterHub to access single-user servers
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/component: hub
+    ports:
+    - protocol: TCP
+      port: 8888
+  # Allow proxy access from hub
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: jupyterhub
+
+---
+# Default Deny All Egress Policy for Single-User Servers
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: singleuser-egress-policy
+  namespace: jupyterhub
+  labels:
+    app.kubernetes.io/name: jupyterhub
+    app.kubernetes.io/instance: kubeadm-python-cluster
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      component: singleuser-server
+  policyTypes:
+  - Egress
+  egress:
+  # Allow DNS resolution
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  # Allow communication with JupyterHub
+  - to:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/component: hub
+  # Allow communication within namespace
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: jupyterhub
+  # Allow HTTPS outbound (for package downloads, git, etc.)
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+  # Allow HTTP outbound (for package downloads)
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 80
+  # Allow container registry access
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 5000
+
+---
+# Allow JupyterHub Hub egress traffic
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-jupyterhub-egress
+  namespace: jupyterhub
+  labels:
+    app.kubernetes.io/name: jupyterhub
+    app.kubernetes.io/instance: kubeadm-python-cluster
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: hub
+  policyTypes:
+  - Egress
+  egress:
+  # Allow DNS resolution
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  # Allow Kubernetes API access
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 6443
+    - protocol: TCP
+      port: 443
+  # Allow communication with single-user servers
+  - to:
+    - podSelector:
+        matchLabels:
+          component: singleuser-server
+  # Allow container registry access
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 5000
+  # Allow HTTPS outbound
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+  # Allow HTTP outbound
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 80
+
+---
+# Allow DNS for all pods in namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: jupyterhub
+  labels:
+    app.kubernetes.io/name: jupyterhub
+    app.kubernetes.io/instance: kubeadm-python-cluster
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector: {}
+  policyTypes:
+  - Egress
+  egress:
+  # Allow DNS to kube-system namespace
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  # Allow DNS to any destination (for external DNS)
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+
+---
+# Allow communication with container registry
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-registry-access
+  namespace: jupyterhub
+  labels:
+    app.kubernetes.io/name: jupyterhub
+    app.kubernetes.io/instance: kubeadm-python-cluster
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector: {}
+  policyTypes:
+  - Egress
+  egress:
+  # Allow access to local container registry
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 5000
+  # Allow access to standard registry ports
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 80
+    - protocol: TCP
+      port: 443
+
+---
+# Allow monitoring and metrics collection
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-monitoring
+  namespace: jupyterhub
+  labels:
+    app.kubernetes.io/name: jupyterhub
+    app.kubernetes.io/instance: kubeadm-python-cluster
+    app.kubernetes.io/component: network-policy
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  ingress:
+  # Allow Prometheus scraping
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: 8080
+    - protocol: TCP
+      port: 9090
+  # Allow internal metrics collection
+  - from:
+    - podSelector: {}
+    ports:
+    - protocol: TCP
+      port: 8080
+
+---
+# Strict policy for production workloads (commented out by default)
+# Uncomment and modify as needed for production environments
+# apiVersion: networking.k8s.io/v1
+# kind: NetworkPolicy
+# metadata:
+#   name: strict-production-policy
+#   namespace: jupyterhub
+#   labels:
+#     app.kubernetes.io/name: jupyterhub
+#     app.kubernetes.io/instance: kubeadm-python-cluster
+#     app.kubernetes.io/component: network-policy
+# spec:
+#   podSelector:
+#     matchLabels:
+#       component: singleuser-server
+#   policyTypes:
+#   - Ingress
+#   - Egress
+#   ingress:
+#   # Only allow JupyterHub hub access
+#   - from:
+#     - podSelector:
+#         matchLabels:
+#           app.kubernetes.io/component: hub
+#   egress:
+#   # Only allow DNS and hub communication
+#   - to: []
+#     ports:
+#     - protocol: UDP
+#       port: 53
+#   - to:
+#     - podSelector:
+#         matchLabels:
+#           app.kubernetes.io/component: hub

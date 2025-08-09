@@ -1,0 +1,139 @@
+---
+# StorageClass for JupyterHub user home directories
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: jupyterhub-user-storage
+  labels:
+    app.kubernetes.io/name: jupyterhub
+    app.kubernetes.io/instance: kubeadm-python-cluster
+    app.kubernetes.io/component: storage
+provisioner: kubernetes.io/host-path
+parameters:
+  type: DirectoryOrCreate
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+
+---
+# PersistentVolume for JupyterHub Hub data
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: jupyterhub-hub-pv
+  labels:
+    app.kubernetes.io/name: jupyterhub
+    app.kubernetes.io/instance: kubeadm-python-cluster
+    app.kubernetes.io/component: hub-storage
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: jupyterhub-hub-storage
+  hostPath:
+    path: /var/lib/jupyterhub
+    type: DirectoryOrCreate
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: Exists
+
+---
+# StorageClass for JupyterHub Hub data
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: jupyterhub-hub-storage
+  labels:
+    app.kubernetes.io/name: jupyterhub
+    app.kubernetes.io/instance: kubeadm-python-cluster
+    app.kubernetes.io/component: storage
+provisioner: kubernetes.io/host-path
+parameters:
+  type: DirectoryOrCreate
+volumeBindingMode: Immediate
+allowVolumeExpansion: true
+
+---
+# PersistentVolumeClaim for JupyterHub Hub data
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: jupyterhub-hub-pvc
+  namespace: jupyterhub
+  labels:
+    app.kubernetes.io/name: jupyterhub
+    app.kubernetes.io/instance: kubeadm-python-cluster
+    app.kubernetes.io/component: hub-storage
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: jupyterhub-hub-storage
+  resources:
+    requests:
+      storage: 10Gi
+
+---
+# PersistentVolume for shared data directory
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: jupyterhub-shared-data-pv
+  labels:
+    app.kubernetes.io/name: jupyterhub
+    app.kubernetes.io/instance: kubeadm-python-cluster
+    app.kubernetes.io/component: shared-storage
+spec:
+  capacity:
+    storage: 50Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: jupyterhub-shared-storage
+  hostPath:
+    path: /var/lib/jupyterhub-shared
+    type: DirectoryOrCreate
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: Exists
+
+---
+# StorageClass for shared data
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: jupyterhub-shared-storage
+  labels:
+    app.kubernetes.io/name: jupyterhub
+    app.kubernetes.io/instance: kubeadm-python-cluster
+    app.kubernetes.io/component: storage
+provisioner: kubernetes.io/host-path
+parameters:
+  type: DirectoryOrCreate
+volumeBindingMode: Immediate
+allowVolumeExpansion: true
+
+---
+# PersistentVolumeClaim for shared data
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: jupyterhub-shared-data-pvc
+  namespace: jupyterhub
+  labels:
+    app.kubernetes.io/name: jupyterhub
+    app.kubernetes.io/instance: kubeadm-python-cluster
+    app.kubernetes.io/component: shared-storage
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: jupyterhub-shared-storage
+  resources:
+    requests:
+      storage: 50Gi
