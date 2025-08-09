@@ -90,7 +90,7 @@ check_existing_kubernetes() {
     fi
     
     if command -v kubectl >/dev/null 2>&1; then
-        local kubectl_version=$(kubectl version --client -o json 2>/dev/null | jq -r '.clientVersion.gitVersion' 2>/dev/null || echo "unknown")
+        local kubectl_version=$(kubectl version --client 2>/dev/null | grep -o 'v[0-9]\+\.[0-9]\+\.[0-9]\+' | head -1 || echo "unknown")
         existing_tools+=("kubectl: $kubectl_version")
     fi
     
@@ -482,7 +482,7 @@ verify_installation() {
     
     # kubectlバージョン確認
     if command -v kubectl >/dev/null 2>&1; then
-        local kubectl_version=$(kubectl version --client --short 2>/dev/null || kubectl version --client -o json 2>/dev/null | jq -r '.clientVersion.gitVersion')
+        local kubectl_version=$(kubectl version --client --short 2>/dev/null || kubectl version --client 2>/dev/null | grep -o 'v[0-9]\+\.[0-9]\+\.[0-9]\+' | head -1)
         print_status "SUCCESS" "kubectl version: $kubectl_version"
     else
         print_status "ERROR" "kubectl not found"
@@ -596,7 +596,7 @@ main() {
     echo ""
     echo "Installed versions:"
     kubeadm version -o short
-    kubectl version --client --short 2>/dev/null || kubectl version --client -o json 2>/dev/null | jq -r '.clientVersion.gitVersion'
+    kubectl version --client --short 2>/dev/null || kubectl version --client 2>/dev/null | grep -o 'v[0-9]\+\.[0-9]\+\.[0-9]\+'
     
     echo ""
     echo "System configuration:"

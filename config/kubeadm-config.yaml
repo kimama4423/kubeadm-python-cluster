@@ -14,7 +14,7 @@ nodeRegistration:
 ---
 apiVersion: kubeadm.k8s.io/v1beta3
 kind: ClusterConfiguration
-kubernetesVersion: "v1.28.2"
+kubernetesVersion: "v1.28.15"
 clusterName: "kubeadm-python-cluster"
 controlPlaneEndpoint: ""  # Will be set by script if HA is enabled
 apiServer:

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>kubeadm-python-cluster Prerequisites Check</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .header { background-color: #f0f0f0; padding: 20px; border-radius: 5px; }
+        .section { margin: 20px 0; padding: 15px; border-left: 4px solid #007cba; background-color: #f9f9f9; }
+        .pass { color: green; }
+        .warning { color: orange; }
+        .fail { color: red; }
+        .log { background-color: #f5f5f5; padding: 10px; font-family: monospace; white-space: pre-wrap; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>kubeadm-python-cluster Prerequisites Check</h1>
+        <p><strong>Hostname:</strong> WINDOWS-DKD66DP</p>
+        <p><strong>Check Date:</strong> 2025-08-09 13:39:36</p>
+        <p><strong>Overall Status:</strong> <span class="pass">PASS</span></p>
+    </div>
+    
+    <div class="section">
+        <h2>System Information</h2>
+        <table>
+            <tr><th>Item</th><th>Value</th></tr>
+            <tr><td>OS</td><td>Ubuntu 24.04.2 LTS</td></tr>
+            <tr><td>Architecture</td><td>x86_64</td></tr>
+            <tr><td>CPU Cores</td><td>16</td></tr>
+            <tr><td>Memory</td><td>30Gi</td></tr>
+            <tr><td>Disk Space</td><td>954G available (1% used)</td></tr>
+        </table>
+    </div>
+    
+    <div class="section">
+        <h2>Detailed Log</h2>
+        <div class="log">2025-08-09 13:39:33 Starting system prerequisites check
+2025-08-09 13:39:33 Detected OS: Ubuntu 24.04.2 LTS (Noble Numbat)
+2025-08-09 13:39:33 WARNING: Ubuntu 24.04 (Not tested, recommended: 20.04 or 22.04)
+2025-08-09 13:39:33 Architecture: x86_64, CPU cores: 16
+2025-08-09 13:39:33 OK: Architecture: x86_64 (Supported)
+2025-08-09 13:39:33 OK: CPU cores: 16 (Excellent)
+2025-08-09 13:39:33 Available memory: 30GB (31604MB)
+2025-08-09 13:39:33 OK: Memory: 30GB (Excellent)
+2025-08-09 13:39:33 Available disk space: 954GB (Usage: 1%)
+2025-08-09 13:39:33 OK: Disk space: 954GB (Sufficient)
+2025-08-09 13:39:33 OK: Swap is disabled (Kubernetes requirement)
+2025-08-09 13:39:36 OK: Internet connectivity (8.8.8.8)
+2025-08-09 13:39:36 WARNING: DNS resolution issues (may affect package installation)
+2025-08-09 13:39:36 Network connectivity to registry.k8s.io: OK
+2025-08-09 13:39:36 Network connectivity to download.docker.com: OK
+2025-08-09 13:39:36 Network connectivity to packages.cloud.google.com: OK
+2025-08-09 13:39:36 OK: All required hosts accessible
+2025-08-09 13:39:36 Port 6443: AVAILABLE
+2025-08-09 13:39:36 Port 2379: AVAILABLE
+2025-08-09 13:39:36 Port 2380: AVAILABLE
+2025-08-09 13:39:36 Port 10250: AVAILABLE
+2025-08-09 13:39:36 Port 10251: AVAILABLE
+2025-08-09 13:39:36 Port 10252: AVAILABLE
+2025-08-09 13:39:36 Port 10259: AVAILABLE
+2025-08-09 13:39:36 OK: All Kubernetes ports available (6443, 2379-2380, 10250-10259)
+2025-08-09 13:39:36 OK: NodePort range (30000-32767): 0 ports used
+2025-08-09 13:39:36 OK: Passwordless sudo access available
+2025-08-09 13:39:36 Package curl: INSTALLED
+2025-08-09 13:39:36 Package wget: INSTALLED
+2025-08-09 13:39:36 Package apt-transport-https: INSTALLED
+2025-08-09 13:39:36 Package ca-certificates: INSTALLED
+2025-08-09 13:39:36 Package gnupg: INSTALLED
+2025-08-09 13:39:36 Package lsb-release: INSTALLED
+2025-08-09 13:39:36 OK: All required packages installed</div>
+    </div>
+</body>
+</html>
